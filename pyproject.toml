@@ -1,0 +1,46 @@
+[tool.poetry]
+name = "bulk-certificate-generator"
+version = "0.1.0"
+description = "Production-ready Bulk Certificate Generator API"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.110.0"
+uvicorn = {extras = ["standard"], version = "^0.27.0"}
+sqlalchemy = "^2.0.0"
+psycopg2-binary = "^2.9.9"
+pydantic = "^2.6.0"
+pydantic-settings = "^2.2.0"
+celery = "^5.3.6"
+redis = "^5.0.1"
+reportlab = "^4.0.0"
+qrcode = "^7.4.2"
+pillow = "^10.2.0"
+alembic = "^1.13.0"
+python-multipart = "^0.0.7"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+httpx = "^0.26.0"
+ruff = "^0.2.0"
+black = "^24.2.0"
+mypy = "^1.8.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+select = ["E", "F", "I"]
+
+[tool.black]
+line-length = 88
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
