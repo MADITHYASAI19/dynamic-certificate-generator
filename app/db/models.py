@@ -25,7 +25,9 @@ class Job(Base):
     issuer_name = Column(String, nullable=False)
     issue_date = Column(String, nullable=False)
     status = Column(Enum(JobStatus), default=JobStatus.PENDING)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.utcnow())
+    succeeded = Column(Integer, default=0)
+    failed = Column(Integer, default=0)
 
     certificates = relationship("Certificate", back_populates="job")
     validation_errors = relationship("ValidationError", back_populates="job")
