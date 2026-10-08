@@ -8,20 +8,21 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-docs/
 build/
 develop-package/
 dist/
 eggs/
-lib/
-lib64/
-parts/
 sdist/
 var/
 wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Project specific
+storage/
+sample.pdf
+*.sqlite
 
 # Pytest
 .pytest_cache/

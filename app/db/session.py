@@ -1,21 +1,21 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+"""
+Database session management.
+Synchronous sessions are used here for simplicity and reliability during
+bulk certificate generation loops, avoiding async overhead.
+"""
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 
-# Use aiteqlite for testing or postgres+asyncpg for prod
-# For now, we'll use a synchronous session for simplicity if requested,
-# but the prompt mentioned SQLAlchemy 2.0 and FastAPI, so async is the modern choice.
-# HOWEVER, the user asked for "one transaction" and "one failure never affects others",
-# so I will use standard sync sessions for the job processing to avoid async overhead in the loops.
+# Ensure we use the correct driver for PostgreSQL
+db_url = settings.DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://")
+engine = create_engine(db_url, pool_pre_ping=True)
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker as SyncSessionMaker
-
-engine = create_engine(settings.DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://"))
-AsyncSessionLocal = SyncSessionMaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db():
-    db = AsyncSessionLocal()
+    """Dependency to provide a database session per request."""
+    db = SessionLocal()
     try:
         yield db
     finally:

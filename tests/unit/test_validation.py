@@ -1,65 +1,65 @@
 import pytest
+from datetime import date
 from app.services.validation import ValidationService
-from app.schemas.certificate import RecipientIn
-from app.core.config import settings
+from app.schemas.certificate import JobCreateIn
+from app.core.exceptions import RequestTooLargeError
+from pydantic import ValidationError
 
-@pytest.fixture
-def validator():
-    return ValidationService()
-
-def test_validate_valid_row(validator):
-    raw = [{"name": "John Doe", "email": "john@example.com"}]
-    valid, errors = validator.validate_recipients(raw)
-    assert len(valid) == 1
-    assert len(errors) == 0
-    assert valid[0].name == "John Doe"
-
-def test_validate_bad_email(validator):
-    raw = [{"name": "John Doe", "email": "not-an-email"}]
-    valid, errors = validator.validate_recipients(raw)
-    assert len(valid) == 0
-    assert len(errors) == 1
-    assert errors[0]["field"] == "email"
-
-def test_validate_empty_name(validator):
-    raw = [{"name": "  ", "email": "john@example.com"}]
-    valid, errors = validator.validate_recipients(raw)
-    assert len(valid) == 0
-    assert len(errors) == 1
-    # Pydantic min_length=1 handles this after strip
-    assert "name" in errors[0]["field"]
-
-def test_validate_mixed_rows(validator):
-    raw = [
-        {"name": "Valid User", "email": "valid@example.com"},
-        {"name": "Invalid User", "email": "bad-email"},
-        {"name": "", "email": "no-name@example.com"},
+def test_validation_mixed_rows():
+    service = ValidationService()
+    job_date = date(2023, 10, 1)
+    raw_recipients = [
+        {"name": "John Doe", "email": "john@example.com"}, # Good
+        {"name": "123", "email": "bad@example.com"},        # Bad name
+        {"name": "Jane Doe", "email": "not-an-email"},    # Bad email
     ]
-    valid, errors = validator.validate_recipients(raw)
-    assert len(valid) == 1
-    assert len(errors) == 2
-    assert valid[0].name == "Valid User"
 
-def test_validate_control_characters(validator):
-    raw = [{"name": "John\x00 Doe\n\t", "email": "john@example.com"}]
-    valid, errors = validator.validate_recipients(raw)
-    assert len(valid) == 1
-    assert valid[0].name == "John Doe"
+    result = service.validate_recipients(raw_recipients, job_date)
 
-def test_validate_name_only_symbols(validator):
-    raw = [{"name": "12345 !!!", "email": "john@example.com"}]
-    valid, errors = validator.validate_recipients(raw)
-    assert len(valid) == 0
-    assert len(errors) == 1
-    assert "at least one letter" in errors[0]["message"]
+    assert result.accepted_count == 1
+    assert result.rejected_count == 2
+    assert len(result.valid) == 1
+    assert result.valid[0].name == "John Doe"
+    assert len(result.errors) == 2
+    assert any(e["field"] == "name" for e in result.errors)
+    assert any("email" in e["field"] for e in result.errors)
 
-def test_validate_oversize_list(validator, monkeypatch):
-    # Set limit small for testing
-    monkeypatch.setattr(settings, "MAX_RECIPIENTS_PER_JOB", 2)
-    raw = [
-        {"name": "U1", "email": "u1@ex.com"},
-        {"name": "U2", "email": "u2@ex.com"},
-        {"name": "U3", "email": "u3@ex.com"},
+def test_job_create_empty_recipients():
+    with pytest.raises(ValidationError):
+        JobCreateIn(
+            course_name="Python 101",
+            issuer_name="Cert Org",
+            issue_date=date(2023, 10, 1),
+            recipients=[]
+        )
+
+def test_too_many_recipients_error():
+    service = ValidationService()
+    job_date = date(2023, 10, 1)
+    # Create a list slightly over the limit
+    from app.core.config import settings
+    raw_recipients = [{"name": "Test", "email": "test@test.com"}] * (settings.MAX_RECIPIENTS_PER_JOB + 1)
+
+    with pytest.raises(RequestTooLargeError) as excinfo:
+        service.validate_recipients(raw_recipients, job_date)
+    assert excinfo.value.limit == settings.MAX_RECIPIENTS_PER_JOB
+
+def test_bad_date_range():
+    service = ValidationService()
+    job_date = date(2023, 10, 1)
+    raw_recipients = [
+        {"name": "Old Person", "email": "old@ex.com", "issue_date": "1980-01-01"}, # Too old
     ]
-    with pytest.raises(ValueError, match="Maximum recipients"):
-        validator.validate_recipients(raw)
+    result = service.validate_recipients(raw_recipients, job_date)
+    assert result.rejected_count == 1
+    assert "sane range" in result.errors[0]["message"]
+
+def test_control_chars_sanitization():
+    service = ValidationService()
+    job_date = date(2023, 10, 1)
+    raw_recipients = [
+        {"name": "John\x00 Doe\n", "email": "john@example.com"},
+    ]
+    result = service.validate_recipients(raw_recipients, job_date)
+    assert result.accepted_count == 1
+    assert result.valid[0].name == "John Doe"

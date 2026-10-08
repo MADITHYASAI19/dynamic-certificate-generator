@@ -11,7 +11,7 @@ fastapi = "^0.110.0"
 uvicorn = {extras = ["standard"], version = "^0.27.0"}
 sqlalchemy = "^2.0.0"
 psycopg2-binary = "^2.9.9"
-pydantic = "^2.6.0"
+pydantic = {extras = ["email"], version = "^2.6.0"}
 pydantic-settings = "^2.2.0"
 celery = "^5.3.6"
 redis = "^5.0.1"
@@ -27,6 +27,10 @@ httpx = "^0.26.0"
 ruff = "^0.2.0"
 black = "^24.2.0"
 mypy = "^1.8.0"
+pypdf = "^4.0.0"
+pytest-cov = "^4.1.0"
+pytest-asyncio = "^0.23.0"
+factory-boy = "^3.3.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -35,6 +39,8 @@ build-backend = "poetry.core.masonry.api"
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+
+[tool.ruff.lint]
 select = ["E", "F", "I"]
 
 [tool.black]
@@ -44,3 +50,12 @@ line-length = 88
 python_version = "3.11"
 strict = true
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "app.*"
+strict = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"

@@ -1,4 +1,4 @@
-.PHONY: up down test lint format migrate
+.PHONY: up down test test-local lint format migrate
 
 up:
 	docker compose up -d --build
@@ -8,6 +8,9 @@ down:
 
 test:
 	docker compose exec api pytest tests/
+
+test-local:
+	python -m pytest
 
 lint:
 	docker compose exec api ruff check .
